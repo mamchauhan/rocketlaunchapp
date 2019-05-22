@@ -1,0 +1,16 @@
+{
+    "inputMessageMetadata": {
+        "messagePayload": {
+            "connectorName": "#_custom_mule_metadata_type_#",
+            "typeId": "weather_json"
+        }
+    },
+    "outputMessageMetadata": {
+        "messagePayload": {
+            "connectorName": "#_custom_mule_metadata_type_#",
+            "typeId": "launchwindows_json"
+        }
+    },
+    "id": "496ca216-c9a5-4b43-8737-0b06d34903e6",
+    "version": "5.2.0.0"
+}

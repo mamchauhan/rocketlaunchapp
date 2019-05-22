@@ -1,0 +1,19 @@
+{
+	"location": "Melbourne",
+	"launchWindows": [{
+			"datetime": "2019-05-19T06:00:00",
+			"windspeed": "2.24",
+			"cloudiness": 32
+		},
+		{
+			"datetime": "2019-05-19T06:00:00",
+			"windspeed": "2.24",
+			"cloudiness": 32
+		},
+		{
+			"datetime": "2019-05-19T06:00:00",
+			"windspeed": "2.24",
+			"cloudiness": 32
+		}
+	]
+}

@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:context="http://www.springframework.org/schema/context" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-current.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd">
+    <http:listener-config name="HTTP_Listener_Configuration" host="0.0.0.0" port="9000" doc:name="HTTP Listener Configuration"/>
+    <http:request-config name="Weathermap_HTTP_Request_Configuration" protocol="HTTPS" host="openweathermap.org" port="443" doc:name="HTTP Request Configuration"/>
+    <context:property-placeholder location="flights-DEV.properties"/>
+    <http:request-config name="Weathermap_Group_Request_Config" protocol="HTTPS" host="api.openweathermap.org" port="443" doc:name="HTTP Request Configuration"/>
+    <flow name="rocketlaunchappFlow">
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/launchwindow" allowedMethods="GET" doc:name="HTTP"/>
+        <set-variable variableName="CityID" value="#[message.inboundProperties.'http.query.params'.id]" doc:name="CityID"/>
+        <choice doc:name="Choice">
+            <when expression="#[flowVars.CityID != null]">
+                <flow-ref name="getLaunchWindowByCityFlow" doc:name="get-launch-window-by-citry"/>
+            </when>
+            <otherwise>
+                <logger message="&quot;Query all flights&quot; ${groupId}" level="INFO" doc:name="Logger"/>
+                <flow-ref name="getLaunchWindowAllCityFlow" doc:name="get-all-launch-window"/>
+            </otherwise>
+        </choice>
+        <logger message="#[flowVars.CityID] &quot;Testing&quot;" level="INFO" doc:name="Logger"/>
+    </flow>
+    <flow name="getLaunchWindowByCityFlow">
+        <http:request config-ref="Weathermap_HTTP_Request_Configuration" path="/data/2.5/forecast?{appid}" method="GET" doc:name="Rocket REST Request">
+            <http:request-builder>
+                <http:query-param paramName="appid" value="b6907d289e10d714a6e88b30761fae22"/>
+                <http:query-param paramName="id" value="#[flowVars.CityID]"/>
+            </http:request-builder>
+        </http:request>
+        <byte-array-to-string-transformer mimeType="application/json" doc:name="Byte Array to String"/>
+        <dw:transform-message doc:name="Transform Message" metadata:id="65e346b0-d727-4662-a599-518a5096d77e">
+            <dw:input-payload doc:sample="weather-example.json" mimeType="application/json"/>
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+
+%var cityDetails = lookup("cityLookupFlow", flowVars.cityID)
+---
+{
+	
+	launchWindows: payload.list filter ($.clouds.all < cityDetails[0].Cloudiness and $.wind.speed < cityDetails[0].Windspeed) map ((list , indexOfList) -> {
+		//datetime: list.dt as :string,
+		location: cityDetails[0].Location,
+		datetime: ((list.dt as :number ) as :datetime) as :string {format:"yyyy/dd/MM hh:mm:ss"},
+		//windspeed: list.wind.speed as :string,
+		//cloudiness: list.clouds.all,
+		score: (abs (20-list.main.temp)) + list.wind.speed + (abs (220 - list.wind.deg )) * 0.1
+	}) orderBy $.score
+} ]]></dw:set-payload>
+        </dw:transform-message>
+    </flow>
+    <flow name="getLaunchWindowAllCityFlow">
+        <http:request config-ref="Weathermap_Group_Request_Config" path="/data/2.5/group?{appid}" method="GET" doc:name="Rocket REST Request">
+            <http:request-builder>
+                <http:query-param paramName="id" value="${groupId}"/>
+                <http:query-param paramName="appid" value="28f4ba900b61e5f68ebb08e54238f59d"/>
+            </http:request-builder>
+        </http:request>
+        <byte-array-to-string-transformer mimeType="application/json" doc:name="Byte Array to String"/>
+        <dw:transform-message doc:name="Transform Message" metadata:id="00677f6d-44a2-4c3a-a385-2e9d0eecfafc">
+            <dw:input-payload doc:sample="group-weather-example.json" mimeType="application/json"/>
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+{
+	launchWindows: payload.list map ((list , indexOfList) -> {
+	location: list.name,
+	datetime: ((list.dt as :number ) as :datetime) as :string {format:"yyyy/dd/MM hh:mm:ss"},
+	//cloudiness: list.clouds.all,
+	//windspeed: list.wind.speed,
+	score: (abs (20-list.main.temp)) + list.wind.speed + (abs (220 - list.wind.deg )) * 0.1
+	})
+}]]></dw:set-payload>
+        </dw:transform-message>
+    </flow>
+    <flow name="cityLookupFlow">
+        <set-payload value="#[Thread.currentThread().getContextClassLoader().getResourceAsStream('lookup/city.csv')]" mimeType="application/csv" doc:name="Load City Threshold"/>
+        <dw:transform-message doc:name="Transform Message" metadata:id="4d3e4ecc-f979-416f-8b5f-22e51d8f49a4">
+            <dw:input-payload doc:sample="lookup/city.csv" mimeType="application/csv"/>
+            <dw:input-variable doc:sample="sample_data/string.dwl" variableName="cityId"/>
+            <dw:set-payload><![CDATA[%dw 1.0
+%input payload application/csv
+%output application/csv
+---
+(payload[?($.CityID == flowVars.CityID)])
+
+]]></dw:set-payload>
+        </dw:transform-message>
+        <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+    </flow>
+</mule>

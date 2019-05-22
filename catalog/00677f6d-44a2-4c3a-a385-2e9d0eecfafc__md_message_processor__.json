@@ -1,0 +1,16 @@
+{
+    "inputMessageMetadata": {
+        "messagePayload": {
+            "connectorName": "#_custom_mule_metadata_type_#",
+            "typeId": "groupweather_json"
+        }
+    },
+    "outputMessageMetadata": {
+        "messagePayload": {
+            "connectorName": "#_custom_mule_metadata_type_#",
+            "typeId": "threshold_json"
+        }
+    },
+    "id": "00677f6d-44a2-4c3a-a385-2e9d0eecfafc",
+    "version": "5.2.0.0"
+}

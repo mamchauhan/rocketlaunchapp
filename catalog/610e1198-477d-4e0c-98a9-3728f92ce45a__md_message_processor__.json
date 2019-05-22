@@ -1,0 +1,11 @@
+{
+    "inputMessageMetadata": {
+        "messagePayload": {
+            "connectorName": "#_custom_mule_metadata_type_#",
+            "typeId": "launchwindows_json"
+        }
+    },
+    "outputMessageMetadata": {},
+    "id": "610e1198-477d-4e0c-98a9-3728f92ce45a",
+    "version": "5.2.0.0"
+}
